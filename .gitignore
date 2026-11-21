@@ -1,0 +1,19 @@
+# OS & Editor files
+desktop.ini
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Temporary / Runtime logs & backups
+*.log
+*.tmp
+*.bak
+rename_admin_temp.php
+
+# Uploaded sponsor banners (keep folder, ignore uploaded files)
+uploads/*
+!uploads/.gitkeep
+
+# Local environment overrides (if used)
+.env

@@ -1,0 +1,16 @@
+{
+    "name": "Forcax",
+    "short_name": "Forcax",
+    "description": "O clássico jogo da Forca, reinventado com desafios diários.",
+    "start_url": "/forca/",
+    "display": "standalone",
+    "background_color": "#121213",
+    "theme_color": "#121213",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
