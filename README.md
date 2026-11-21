@@ -56,8 +56,6 @@ Acesse agora mesmo pelo navegador ou instale como aplicativo (PWA) no celular e 
 
 ## 📸 Screenshots
 
-> *Adicione as capturas de tela na pasta `screenshots/` com os nomes abaixo para exibi-las automaticamente aqui.*
-
 | Tela Principal (Solo / Tabuleiro) | Seleção de Modos | Multiplayer & Salas |
 | :---: | :---: | :---: |
 | ![Tela Principal](screenshots/home.png) | ![Modos de Jogo](screenshots/modes.png) | ![Multiplayer](screenshots/multiplayer.png) |
