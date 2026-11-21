@@ -232,119 +232,134 @@ export const handleGuess = async (letter) => {
     if (state.gameState.isGameOver || (endgameModal && !endgameModal.classList.contains('hidden'))) return;
     if (state.gameState.guesses.includes(letter)) return;
     if (isRequesting) return;
-    
+
     isRequesting = true;
     state.gameState.guesses.push(letter);
-    
+
+    // Immediate visual feedback on tap/click (no waiting for server round-trip)
     const keyBtn = document.getElementById(`key-${letter}`);
-    if (keyBtn) keyBtn.classList.add('animate-flip');
-
-    const ow = state.gameState.words.map(w => w.word).filter(Boolean);
-    const payload = {
-        mode: state.currentMode,
-        guesses: state.gameState.guesses
-    };
-    if (state.currentRoom && state.currentRoom.code) {
-        payload.room_code = state.currentRoom.code;
-    }
-    if (ow.length === state.currentMode) {
-        payload.override_words = ow;
+    const prevKeyClass = keyBtn ? keyBtn.className : '';
+    if (keyBtn) {
+        keyBtn.classList.add('opacity-70', 'scale-95', 'border-emerald-400/60');
     }
 
-    const data = await apiCall('api/guess.php', payload);
-
-    if (data.error) {
-        isRequesting = false;
-        return;
-    }
-
-    let madeMistake = (data.mistakes > state.gameState.mistakes);
-
-    data.state.forEach((board, i) => {
-        if (board.completed) {
-            const st = document.getElementById(`board-status-${i}`);
-            if (st) st.classList.remove('hidden');
+    try {
+        const ow = state.gameState.words.map(w => w.word).filter(Boolean);
+        const payload = {
+            mode: state.currentMode,
+            guesses: state.gameState.guesses
+        };
+        if (state.currentRoom && state.currentRoom.code) {
+            payload.room_code = state.currentRoom.code;
         }
-        board.revealed.forEach((char, j) => {
-            const slot = document.getElementById(`slot-${i}-${j}`);
-            if (char) {
-                if (slot && !slot.innerText) {
-                    slot.innerText = char;
-                    slot.classList.add('bg-[#538d4e]', 'border-emerald-500', 'animate-flip');
-                }
-            } else if (data.is_game_over) {
-                if (slot) {
-                    if (data.full_words && data.full_words[i] && !data.hide_words) {
-                        slot.innerText = data.full_words[i][j];
-                        slot.classList.add('text-rose-400', 'bg-rose-950/20');
-                    } else if (data.hide_words) {
-                        slot.innerText = '?';
-                        slot.classList.add('text-amber-400', 'bg-amber-950/20', 'border-amber-500/40');
+        if (ow.length === state.currentMode) {
+            payload.override_words = ow;
+        }
+
+        const data = await apiCall('api/guess.php', payload);
+
+        if (!data || data.error) {
+            // Rollback guess so player can try the letter again without reloading
+            const idx = state.gameState.guesses.lastIndexOf(letter);
+            if (idx !== -1) state.gameState.guesses.splice(idx, 1);
+            if (keyBtn) keyBtn.className = prevKeyClass;
+            showToast((data && data.error) || 'Erro de conexão. Tente novamente.', 'error');
+            return;
+        }
+
+        let madeMistake = (data.mistakes > state.gameState.mistakes);
+
+        data.state.forEach((board, i) => {
+            if (board.completed) {
+                const st = document.getElementById(`board-status-${i}`);
+                if (st) st.classList.remove('hidden');
+            }
+            board.revealed.forEach((char, j) => {
+                const slot = document.getElementById(`slot-${i}-${j}`);
+                if (char) {
+                    if (slot && !slot.innerText) {
+                        slot.innerText = char;
+                        slot.classList.add('bg-[#538d4e]', 'border-emerald-500', 'animate-flip');
+                    }
+                } else if (data.is_game_over) {
+                    if (slot) {
+                        if (data.full_words && data.full_words[i] && !data.hide_words) {
+                            slot.innerText = data.full_words[i][j];
+                            slot.classList.add('text-rose-400', 'bg-rose-950/20');
+                        } else if (data.hide_words) {
+                            slot.innerText = '?';
+                            slot.classList.add('text-amber-400', 'bg-amber-950/20', 'border-amber-500/40');
+                        }
                     }
                 }
-            }
-        });
-    });
-
-    if (madeMistake) {
-        const boardsArea = document.getElementById('boards-container');
-        if (boardsArea) {
-            boardsArea.classList.remove('animate-shake');
-            void boardsArea.offsetWidth; // trigger reflow
-            boardsArea.classList.add('animate-shake');
-        }
-    } else if (state.currentRoom) {
-        let diffSeconds = 0;
-        if (typeof state.currentRoom.elapsed_seconds === 'number') {
-            const clientDelta = state.currentRoom.last_sync_ts ? Math.max(0, (Date.now() - state.currentRoom.last_sync_ts) / 1000) : 0;
-            diffSeconds = state.currentRoom.elapsed_seconds + clientDelta;
-        } else if (state.currentRoom.started_at) {
-            const startedAt = new Date(state.currentRoom.started_at.replace(' ', 'T')).getTime();
-            diffSeconds = Math.max(0, (Date.now() - startedAt) / 1000);
-        }
-        const bonus = Math.max(0, Math.floor(50 - diffSeconds));
-        const increment = 50 + bonus;
-        state.gameState.scoreIncrement = (state.gameState.scoreIncrement || 0) + increment;
-        showToast(`+${increment} pontos!`, 'success');
-    }
-
-    state.gameState.mistakes = data.mistakes;
-    if (data.max_mistakes) {
-        state.gameState.maxMistakes = parseInt(data.max_mistakes);
-    }
-    state.gameState.boardState = data.state;
-    
-    if (data.is_game_over) {
-        state.gameState.isGameOver = true;
-    }
-
-    if (state.currentRoom) {
-        import('./multiplayer.js').then(mp => mp.syncRoom('update'));
-    }
-
-    updateUI();
-    saveLocalState();
-
-    if (data.is_game_over) {
-        if (!state.currentRoom) {
-            await apiCall('api/save_game.php', {
-                mode: state.currentMode,
-                is_win: data.is_win ? 1 : 0,
-                mistakes: data.mistakes,
-                guesses: state.gameState.guesses
             });
+        });
+
+        if (madeMistake) {
+            const boardsArea = document.getElementById('boards-container');
+            if (boardsArea) {
+                boardsArea.classList.remove('animate-shake');
+                void boardsArea.offsetWidth; // trigger reflow
+                boardsArea.classList.add('animate-shake');
+            }
+        } else if (state.currentRoom) {
+            let diffSeconds = 0;
+            if (typeof state.currentRoom.elapsed_seconds === 'number') {
+                const clientDelta = state.currentRoom.last_sync_ts ? Math.max(0, (Date.now() - state.currentRoom.last_sync_ts) / 1000) : 0;
+                diffSeconds = state.currentRoom.elapsed_seconds + clientDelta;
+            } else if (state.currentRoom.started_at) {
+                const startedAt = new Date(state.currentRoom.started_at.replace(' ', 'T')).getTime();
+                diffSeconds = Math.max(0, (Date.now() - startedAt) / 1000);
+            }
+            const bonus = Math.max(0, Math.floor(50 - diffSeconds));
+            const increment = 50 + bonus;
+            state.gameState.scoreIncrement = (state.gameState.scoreIncrement || 0) + increment;
+            showToast(`+${increment} pontos!`, 'success');
         }
 
-        if (data.is_win) {
-            fireConfetti();
+        state.gameState.mistakes = data.mistakes;
+        if (data.max_mistakes) {
+            state.gameState.maxMistakes = parseInt(data.max_mistakes);
+        }
+        state.gameState.boardState = data.state;
+
+        if (data.is_game_over) {
+            state.gameState.isGameOver = true;
         }
 
-        setTimeout(() => {
-            showEndgame(data);
-        }, 2000);
+        if (state.currentRoom) {
+            import('./multiplayer.js').then(mp => mp.syncRoom('update'));
+        }
+
+        updateUI();
+        saveLocalState();
+
+        if (data.is_game_over) {
+            if (!state.currentRoom) {
+                apiCall('api/save_game.php', {
+                    mode: state.currentMode,
+                    is_win: data.is_win ? 1 : 0,
+                    mistakes: data.mistakes,
+                    guesses: state.gameState.guesses
+                }).catch(() => {});
+            }
+
+            if (data.is_win) {
+                fireConfetti();
+            }
+
+            setTimeout(() => {
+                showEndgame(data);
+            }, 2000);
+        }
+    } catch (err) {
+        const idx = state.gameState.guesses.lastIndexOf(letter);
+        if (idx !== -1) state.gameState.guesses.splice(idx, 1);
+        if (keyBtn) keyBtn.className = prevKeyClass;
+        showToast('Falha na conexão. Tente novamente.', 'error');
+    } finally {
+        isRequesting = false;
     }
-    
-    isRequesting = false;
 };
 
 export const updateUI = () => {
@@ -552,11 +567,19 @@ export const showEndgame = async (data) => {
                         state.currentRoom.status
                     );
                 }
+                const podiumTitle = document.getElementById('endgame-podium-title');
+                if (podiumTitle && typeof mp.computePlayerRanks === 'function') {
+                    const ranks = mp.computePlayerRanks(state.currentRoom.players);
+                    const tiedFirst = ranks.filter((r, idx) => r === 1 && (parseInt(state.currentRoom.players[idx].score || 0) > 0 || state.currentRoom.players[idx].finished == 1)).length;
+                    if (tiedFirst > 1 && state.currentRoom.status === 'finished') {
+                        podiumTitle.innerHTML = '<i class="fas fa-handshake mr-1.5"></i>Empate no 1º Lugar!';
+                    }
+                }
             });
             content.innerHTML += `
                 <div class="bg-[#141416] p-4 rounded-xl border border-slate-700/80 flex flex-col gap-2">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-black uppercase tracking-widest text-amber-400"><i class="fas fa-trophy mr-1.5"></i>Classificação da Sala</span>
+                        <span id="endgame-podium-title" class="text-xs font-black uppercase tracking-widest text-amber-400"><i class="fas fa-trophy mr-1.5"></i>Classificação da Sala</span>
                         <span class="text-[10px] font-mono text-slate-400">SALA ${state.currentRoom.code}</span>
                     </div>
                     <div id="endgame-multiplayer-podium" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1"></div>

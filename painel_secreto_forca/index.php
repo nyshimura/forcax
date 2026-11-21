@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $adsterra_social_bar = $_POST['adsterra_social_bar'] ?? '';
     $adsense_code = $_POST['adsense_code'] ?? '';
     $donate_link = $_POST['donate_link'] ?? '';
+    $google_analytics_id = trim($_POST['google_analytics_id'] ?? '');
     $new_admin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['admin_slug'] ?? '');
 
     $settingsToSave = [
@@ -105,7 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'adsterra_code' => $adsterra_code,
         'adsterra_social_bar' => $adsterra_social_bar,
         'adsense_code' => $adsense_code,
-        'donate_link' => $donate_link
+        'donate_link' => $donate_link,
+        'google_analytics_id' => $google_analytics_id
     ];
 
     $stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
@@ -349,6 +351,16 @@ while ($row = $res->fetch_assoc()) {
                     <p class="text-sm text-slate-400 mt-2">
                         <i class="fas fa-heart text-rose-500"></i> 
                         <strong>Dica:</strong> Insira o seu link de doação. Se deixar em branco, o botão não aparecerá no perfil do jogador.
+                    </p>
+                </div>
+
+                <!-- Google Analytics (GA4) Config -->
+                <div class="p-6 bg-sky-900/10 rounded-xl border border-sky-500/20">
+                    <label class="block text-white font-bold mb-2"><i class="fas fa-chart-line text-sky-400 mr-2"></i>Google Analytics 4 (Measurement ID):</label>
+                    <input type="text" name="google_analytics_id" value="<?= htmlspecialchars($settings['google_analytics_id'] ?? '') ?>" class="w-full bg-[#121213] border border-slate-700 text-sky-400 font-mono rounded-lg p-3 focus:outline-none focus:border-sky-500 transition-colors" placeholder="Ex: G-XXXXXXXXXX">
+                    <p class="text-sm text-slate-400 mt-2">
+                        <i class="fas fa-info-circle text-sky-400"></i>
+                        Insira o ID de métrica do Google Analytics (`G-...`) para rastrear acessos e jogadores ativos em tempo real. Deixe em branco para desativar.
                     </p>
                 </div>
 

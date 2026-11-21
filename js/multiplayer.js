@@ -8,8 +8,35 @@ export let loadedRooms = [];
 export let pendingProfileDialogAction = null;
 let isSyncing = false;
 
+export const computePlayerRanks = (players) => {
+    if (!Array.isArray(players) || players.length === 0) return [];
+    const ranks = [];
+    for (let i = 0; i < players.length; i++) {
+        const p = players[i];
+        const score = parseInt(p.score || 0);
+        const isWin = p.finished == 1;
+        if (i === 0) {
+            ranks.push(1);
+        } else {
+            const prev = players[i - 1];
+            const prevScore = parseInt(prev.score || 0);
+            const prevWin = prev.finished == 1;
+            if (score === prevScore && isWin === prevWin) {
+                ranks.push(ranks[i - 1]);
+            } else {
+                ranks.push(i + 1);
+            }
+        }
+    }
+    return ranks;
+};
+
 export const renderLiveRacePlayersHtml = (players, maxMistakes, roomStatus, isCompact = false) => {
     if (!Array.isArray(players) || players.length === 0) return '';
+    const ranks = computePlayerRanks(players);
+    const firstPlaceCount = ranks.filter((r, idx) => r === 1 && (parseInt(players[idx].score || 0) > 0 || players[idx].finished == 1)).length;
+    const isTieForFirst = firstPlaceCount > 1;
+
     return players.map((p, i) => {
         const isMe = p.uuid === state.uuid;
         const mistakes = parseInt(p.mistakes || 0);
@@ -18,21 +45,23 @@ export const renderLiveRacePlayersHtml = (players, maxMistakes, roomStatus, isCo
         const isWinner = p.finished == 1;
         const isEliminated = p.finished == -1;
         const isPlaying = p.finished == 0 && roomStatus === 'playing';
+        const rank = ranks[i];
 
-        // Rank badge
-        let rankBadge = `<div class="w-6 h-6 rounded-lg bg-[#18181b] border border-slate-700/80 flex items-center justify-center text-[11px] font-black text-slate-400 shrink-0">#${i+1}</div>`;
-        if (i === 0 && (p.score > 0 || isWinner)) {
-            rankBadge = `<div class="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-xs text-amber-400 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.25)]" title="1º Lugar"><i class="fas fa-crown"></i></div>`;
-        } else if (i === 1 && p.score > 0) {
+        // Rank badge (supports ties!)
+        let rankBadge = `<div class="w-6 h-6 rounded-lg bg-[#18181b] border border-slate-700/80 flex items-center justify-center text-[11px] font-black text-slate-400 shrink-0">#${rank}</div>`;
+        if (rank === 1 && (p.score > 0 || isWinner)) {
+            rankBadge = `<div class="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-xs text-amber-400 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.25)]" title="${isTieForFirst ? '1º Lugar (Empate)' : '1º Lugar'}"><i class="fas fa-crown"></i></div>`;
+        } else if (rank === 2 && p.score > 0) {
             rankBadge = `<div class="w-6 h-6 rounded-lg bg-slate-400/20 border border-slate-400/40 flex items-center justify-center text-xs text-slate-300 shrink-0" title="2º Lugar"><i class="fas fa-medal"></i></div>`;
-        } else if (i === 2 && p.score > 0) {
+        } else if (rank === 3 && p.score > 0) {
             rankBadge = `<div class="w-6 h-6 rounded-lg bg-orange-700/20 border border-orange-600/40 flex items-center justify-center text-xs text-orange-400 shrink-0" title="3º Lugar"><i class="fas fa-medal"></i></div>`;
         }
 
         // Status pill
         let statusPill = '';
         if (isWinner) {
-            statusPill = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"><i class="fas fa-trophy text-amber-400"></i> Acertou!</span>`;
+            const tieLabel = (isTieForFirst && rank === 1 && roomStatus === 'finished') ? 'Empate!' : 'Acertou!';
+            statusPill = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"><i class="fas fa-trophy text-amber-400"></i> ${tieLabel}</span>`;
         } else if (isEliminated) {
             statusPill = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-400 border border-rose-500/30"><i class="fas fa-skull"></i> Enforcado</span>`;
         } else if (isPlaying) {
@@ -360,8 +389,10 @@ export const syncRoom = async (action = 'update') => {
         const cCount = document.getElementById('lobby-count');
         if (cCount) cCount.innerText = data.players.length;
         
+        const lobbyRanks = computePlayerRanks(data.players);
         playersDiv.innerHTML = data.players.map((p, i) => {
             const isMe = p.uuid === state.uuid;
+            const rank = lobbyRanks[i];
             return `
                 <div class="flex items-center justify-between p-2 rounded-lg bg-[#2a2a2c] border border-slate-700">
                     <div class="flex items-center gap-2 min-w-0">
@@ -373,7 +404,7 @@ export const syncRoom = async (action = 'update') => {
                             </span>
                             <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
                                 ${p.score} pts
-                                ${i === 0 && p.score > 0 ? '<i class="fas fa-crown text-amber-400 text-xs" title="1º Lugar (Ouro)"></i>' : (i === 1 && p.score > 0 ? '<i class="fas fa-crown text-slate-300 text-xs" title="2º Lugar (Prata)"></i>' : (i === 2 && p.score > 0 ? '<i class="fas fa-crown text-orange-700 text-xs" title="3º Lugar (Bronze)"></i>' : ''))}
+                                ${rank === 1 && p.score > 0 ? '<i class="fas fa-crown text-amber-400 text-xs" title="1º Lugar (Ouro)"></i>' : (rank === 2 && p.score > 0 ? '<i class="fas fa-crown text-slate-300 text-xs" title="2º Lugar (Prata)"></i>' : (rank === 3 && p.score > 0 ? '<i class="fas fa-crown text-orange-700 text-xs" title="3º Lugar (Bronze)"></i>' : ''))}
                             </span>
                         </div>
                     </div>

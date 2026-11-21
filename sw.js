@@ -1,16 +1,14 @@
-const CACHE_NAME = 'forca-store-v2';
+const CACHE_NAME = 'forca-store-v3';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();
     e.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll([
-            '/forca/',
-            '/forca/index.php',
-            '/forca/manifest.json',
-            '/forca/icon.svg',
-            'https://cdn.tailwindcss.com',
-            'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js'
-        ])),
+            './',
+            './index.php',
+            './manifest.json',
+            './icon.svg'
+        ])).catch(() => {})
     );
 });
 
@@ -29,20 +27,27 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
-    
-    // For API calls, don't cache at all
+
+    // For API calls, never cache; return clean JSON if offline
     if (e.request.url.includes('/api/')) {
-        e.respondWith(fetch(e.request));
+        e.respondWith(
+            fetch(e.request).catch(() => new Response(
+                JSON.stringify({ error: 'Sem conexão com a internet.' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            ))
+        );
         return;
     }
 
     // Network-first strategy
     e.respondWith(
         fetch(e.request).then((response) => {
-            const resClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-                cache.put(e.request, resClone);
-            });
+            if (response && response.status === 200 && response.type === 'basic') {
+                const resClone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(e.request, resClone);
+                });
+            }
             return response;
         }).catch(() => {
             return caches.match(e.request);

@@ -456,5 +456,25 @@ CREATE TABLE `scores` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+-- Estrutura para tabela `multiplayer_games`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `multiplayer_games` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `match_id` varchar(64) NOT NULL,
+  `room_code` varchar(10) NOT NULL,
+  `player_uuid` varchar(64) NOT NULL,
+  `player_name` varchar(50) NOT NULL,
+  `is_win` tinyint(1) NOT NULL DEFAULT 0,
+  `is_draw` tinyint(1) NOT NULL DEFAULT 0,
+  `score` int(11) NOT NULL DEFAULT 0,
+  `mistakes` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_match_player` (`match_id`, `player_uuid`),
+  KEY `idx_player_uuid` (`player_uuid`),
+  KEY `idx_score` (`score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;

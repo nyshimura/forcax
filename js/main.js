@@ -45,6 +45,19 @@ const fetchSettings = async () => {
             window.adsbygoogle = window.adsbygoogle || [];
             window.adBreak = window.adConfig = function(o) { window.adsbygoogle.push(o); };
         }
+
+        // Load Google Analytics (GA4) if configured in admin panel
+        if (globalSettings.google_analytics_id && globalSettings.google_analytics_id.trim() !== '') {
+            const gaId = globalSettings.google_analytics_id.trim();
+            const gaScript = document.createElement('script');
+            gaScript.async = true;
+            gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
+            document.head.appendChild(gaScript);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function(){ window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            window.gtag('config', gaId);
+        }
     } catch (e) {}
 };
 

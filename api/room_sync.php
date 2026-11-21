@@ -190,6 +190,11 @@ if ($r = $rRes->fetch_assoc()) {
 
 $match_id = md5(($started_at ?? '') . '|' . ($room['words'] ?? ''));
 
+if ($room['status'] === 'finished' && !empty($players)) {
+    require_once __DIR__ . '/multiplayer_stats_helper.php';
+    recordMultiplayerMatchResults($conn, $room_code, $match_id, $players);
+}
+
 $response = [
     'success' => true,
     'status' => $room['status'],

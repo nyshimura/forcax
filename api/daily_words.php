@@ -25,10 +25,11 @@ $langMap = [
 ];
 
 if ($ip !== '127.0.0.1' && $ip !== '::1') {
-    // Try to get real location
+    // Try to get real location with short timeout so it never hangs page load
     $geoUrl = "http://ip-api.com/json/{$ip}";
-    $geoData = @json_decode(file_get_contents($geoUrl), true);
-    if ($geoData && $geoData['status'] === 'success') {
+    $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+    $geoData = @json_decode(@file_get_contents($geoUrl, false, $ctx), true);
+    if ($geoData && isset($geoData['status']) && $geoData['status'] === 'success') {
         $countryCode = $geoData['countryCode'];
         $countryName = $geoData['country'];
         $lang = isset($langMap[$countryCode]) ? $langMap[$countryCode] : strtolower($countryCode);

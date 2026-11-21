@@ -42,7 +42,7 @@
       } }
     }
   </script>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body class="h-[100dvh] bg-[#121213] text-[#d7dadc] flex flex-col font-sans overflow-hidden antialiased">
     <!-- Header -->
@@ -267,45 +267,85 @@
                 </button>
             </div>
             
-            <div class="flex bg-slate-800 rounded-lg p-1 mb-6">
-                <button class="flex-1 py-2 text-xs font-bold rounded-md bg-emerald-600 text-white transition-colors" onclick="loadStats(1)" id="tab-stat-1" data-i18n="TITLE_1">FORCA</button>
-                <button class="flex-1 py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors" onclick="loadStats(2)" id="tab-stat-2" data-i18n="TITLE_2">DUETO</button>
-                <button class="flex-1 py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors" onclick="loadStats(4)" id="tab-stat-4" data-i18n="TITLE_4">QUARTETO</button>
+            <div class="flex bg-slate-800 rounded-lg p-1 mb-6 gap-1">
+                <button class="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md bg-emerald-600 text-white transition-colors" onclick="loadStats(1)" id="tab-stat-1" data-i18n="TITLE_1">FORCA</button>
+                <button class="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors" onclick="loadStats(2)" id="tab-stat-2" data-i18n="TITLE_2">DUETO</button>
+                <button class="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors" onclick="loadStats(4)" id="tab-stat-4" data-i18n="TITLE_4">QUARTETO</button>
+                <button class="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors" onclick="loadStats('multiplayer')" id="tab-stat-multiplayer">MULTI</button>
             </div>
 
-            <div class="grid grid-cols-4 gap-2 mb-8 text-center">
-                <div class="flex flex-col items-center">
-                    <span id="stat-jogos" class="text-3xl font-bold">0</span>
-                    <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_GAMES">Jogos</span>
+            <div id="stats-daily-view">
+                <div class="grid grid-cols-4 gap-2 mb-8 text-center">
+                    <div class="flex flex-col items-center">
+                        <span id="stat-jogos" class="text-3xl font-bold">0</span>
+                        <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_GAMES">Jogos</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="stat-vitorias" class="text-3xl font-bold">0</span>
+                        <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_WIN_PERCENT">% Vitórias</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="stat-sequencia" class="text-3xl font-bold">0</span>
+                        <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_STREAK">Sequência</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="stat-melhor" class="text-3xl font-bold">0</span>
+                        <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_BEST_STREAK">Melhor Seq</span>
+                    </div>
                 </div>
-                <div class="flex flex-col items-center">
-                    <span id="stat-vitorias" class="text-3xl font-bold">0</span>
-                    <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_WIN_PERCENT">% Vitórias</span>
+
+                <h3 class="text-lg font-bold mb-4 uppercase tracking-widest text-slate-300" data-i18n="MODAL_STATS_MISTAKES">Distribuição de Erros (Vitórias)</h3>
+                <div id="stat-distribution" class="flex flex-col gap-1 mb-8">
+                    <!-- Bar chart injected here -->
                 </div>
-                <div class="flex flex-col items-center">
-                    <span id="stat-sequencia" class="text-3xl font-bold">0</span>
-                    <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_STREAK">Sequência</span>
+
+                <h3 class="text-lg font-bold mb-4 uppercase tracking-widest text-slate-300" data-i18n="REGIONAL_VS_GLOBAL">Regionais vs Global</h3>
+                <div class="bg-slate-800 rounded-xl p-4 mb-4 flex justify-between items-center">
+                    <div class="text-center w-1/2 border-r border-slate-700">
+                        <div class="text-sm text-slate-400 mb-1" id="stat-country-name">🇧🇷 BR</div>
+                        <div class="text-2xl font-bold text-emerald-400" id="stat-country-rate">0%</div>
+                    </div>
+                    <div class="text-center w-1/2">
+                        <div class="text-sm text-slate-400 mb-1" data-i18n="GLOBAL">🌍 Global</div>
+                        <div class="text-2xl font-bold text-blue-400" id="stat-global-rate">0%</div>
+                    </div>
                 </div>
-                <div class="flex flex-col items-center">
-                    <span id="stat-melhor" class="text-3xl font-bold">0</span>
-                    <span class="text-xs text-slate-400 mt-1" data-i18n="MODAL_STATS_BEST_STREAK">Melhor Seq</span>
+                <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
+                    <span class="text-slate-400 font-bold uppercase tracking-wider"><i class="fas fa-globe-americas text-emerald-400 mr-1.5"></i>Partidas Globais</span>
+                    <span class="text-white font-black font-mono text-sm" id="stat-global-total">0</span>
                 </div>
             </div>
 
-            <h3 class="text-lg font-bold mb-4 uppercase tracking-widest text-slate-300" data-i18n="MODAL_STATS_MISTAKES">Distribuição de Erros (Vitórias)</h3>
-            <div id="stat-distribution" class="flex flex-col gap-1 mb-8">
-                <!-- Bar chart injected here -->
-            </div>
-
-            <h3 class="text-lg font-bold mb-4 uppercase tracking-widest text-slate-300" data-i18n="REGIONAL_VS_GLOBAL">Regionais vs Global</h3>
-            <div class="bg-slate-800 rounded-xl p-4 mb-8 flex justify-between items-center">
-                <div class="text-center w-1/2 border-r border-slate-700">
-                    <div class="text-sm text-slate-400 mb-1" id="stat-country-name">🇧🇷 BR</div>
-                    <div class="text-2xl font-bold text-emerald-400" id="stat-country-rate">0%</div>
+            <div id="stats-multiplayer-view" class="hidden">
+                <div class="grid grid-cols-4 gap-2 mb-6 text-center">
+                    <div class="flex flex-col items-center">
+                        <span id="mp-stat-jogos" class="text-3xl font-bold">0</span>
+                        <span class="text-xs text-slate-400 mt-1">Partidas</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="mp-stat-vitorias" class="text-3xl font-bold text-emerald-400">0%</span>
+                        <span class="text-xs text-slate-400 mt-1">% Vitórias</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="mp-stat-empates" class="text-3xl font-bold text-amber-400">0</span>
+                        <span class="text-xs text-slate-400 mt-1">Empates</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span id="mp-stat-recorde" class="text-3xl font-bold text-indigo-400">0</span>
+                        <span class="text-xs text-slate-400 mt-1">Recorde</span>
+                    </div>
                 </div>
-                <div class="text-center w-1/2">
-                    <div class="text-sm text-slate-400 mb-1" data-i18n="GLOBAL">🌍 Global</div>
-                    <div class="text-2xl font-bold text-blue-400" id="stat-global-rate">0%</div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3 mb-6 flex justify-between items-center text-xs">
+                    <span class="text-slate-400 font-bold uppercase tracking-wider"><i class="fas fa-users text-indigo-400 mr-1.5"></i>Partidas Multiplayer Globais</span>
+                    <span class="text-white font-black font-mono text-sm" id="mp-stat-global-matches">0</span>
+                </div>
+
+                <h3 class="text-sm font-black mb-3 uppercase tracking-widest text-amber-400 flex items-center gap-2">
+                    <i class="fas fa-trophy"></i> Ranking Global (Top 10)
+                </h3>
+                <div id="mp-stat-ranking" class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+                    <!-- Ranking injected here -->
                 </div>
             </div>
 
@@ -521,6 +561,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=9"></script>
+    <script type="module" src="js/main.js?v=10"></script>
 </body>
 </html>

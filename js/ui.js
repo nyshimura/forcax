@@ -60,10 +60,10 @@ export const saveProfile = async () => {
         } else if (window.pendingProfileDialogAction === 'publicRooms') {
             document.getElementById('modes-modal').classList.add('hidden');
             openPublicRooms();
-        } else if (window.pendingProfileDialogAction === 'syncLobbyName') {
-            if (state.currentRoom) {
-                updateLobbyName(state.playerName);
-            }
+        }
+
+        if (state.currentRoom && state.currentRoom.code) {
+            updateLobbyName(state.playerName);
         }
         window.loadedRooms = [];
         window.pendingProfileDialogAction = null;
@@ -395,19 +395,76 @@ export const closeEndgame = () => {
 export const loadStats = async (mode = state.currentMode) => {
     try {
         // Update active tabs
-        [1, 2, 4].forEach(m => {
+        [1, 2, 4, 'multiplayer'].forEach(m => {
             const btn = document.getElementById('tab-stat-' + m);
             if (btn) {
                 if (m === mode) {
-                    btn.className = "flex-1 py-2 text-xs font-bold rounded-md bg-emerald-600 text-white transition-colors";
+                    btn.className = "flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md bg-emerald-600 text-white transition-colors";
                 } else {
-                    btn.className = "flex-1 py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors";
+                    btn.className = "flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-md text-slate-400 hover:text-white transition-colors";
                 }
             }
         });
 
-        const response = await fetch(`api/stats.php?mode=${mode}`, { headers: { 'X-UUID': state.uuid || '' } });
+        const dailyView = document.getElementById('stats-daily-view');
+        const mpView = document.getElementById('stats-multiplayer-view');
+
+        const response = await fetch(`api/stats.php?mode=${encodeURIComponent(mode)}`, { headers: { 'X-UUID': state.uuid || '' } });
         const data = await response.json();
+
+        if (mode === 'multiplayer') {
+            if (dailyView) dailyView.classList.add('hidden');
+            if (mpView) mpView.classList.remove('hidden');
+
+            if (data.personal) {
+                document.getElementById('mp-stat-jogos').innerText = data.personal.total ?? 0;
+                document.getElementById('mp-stat-vitorias').innerText = (data.personal.win_rate ?? 0) + '%';
+                document.getElementById('mp-stat-empates').innerText = data.personal.draws ?? 0;
+                document.getElementById('mp-stat-recorde').innerText = data.personal.best_score ?? 0;
+            }
+            const globalMatchesEl = document.getElementById('mp-stat-global-matches');
+            if (globalMatchesEl) globalMatchesEl.innerText = data.global_matches ?? 0;
+
+            const rankEl = document.getElementById('mp-stat-ranking');
+            if (rankEl) {
+                const ranking = Array.isArray(data.ranking) ? data.ranking : [];
+                if (ranking.length === 0) {
+                    rankEl.innerHTML = `<div class="text-center text-slate-500 text-xs py-6 italic">Nenhuma partida multiplayer registrada ainda.</div>`;
+                } else {
+                    rankEl.innerHTML = ranking.map((r, idx) => {
+                        const medal = idx === 0
+                            ? '<i class="fas fa-crown text-amber-400"></i>'
+                            : (idx === 1 ? '<i class="fas fa-medal text-slate-300"></i>'
+                            : (idx === 2 ? '<i class="fas fa-medal text-orange-500"></i>'
+                            : `<span class="text-xs font-black text-slate-400">#${idx + 1}</span>`));
+                        const rowHighlight = r.is_me
+                            ? 'bg-indigo-950/50 border-indigo-500/60'
+                            : 'bg-[#121213] border-slate-700/70';
+                        return `
+                            <div class="flex items-center justify-between p-2.5 rounded-xl border ${rowHighlight}">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">${medal}</div>
+                                    <div class="flex flex-col min-w-0">
+                                        <span class="text-xs font-bold text-white truncate">${r.player_name}${r.is_me ? ' <span class="text-[10px] text-indigo-300">(Você)</span>' : ''}</span>
+                                        <span class="text-[10px] text-slate-400">${r.wins} vitórias &bull; ${r.matches} partidas</span>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0 ml-2">
+                                    <div class="text-xs font-black text-emerald-400">${r.best_score} pts</div>
+                                    <div class="text-[10px] text-slate-500">recorde</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            document.getElementById('stats-modal').classList.remove('hidden');
+            return;
+        }
+
+        if (dailyView) dailyView.classList.remove('hidden');
+        if (mpView) mpView.classList.add('hidden');
         
         if (data.personal) {
             document.getElementById('stat-jogos').innerText = data.personal.total;
@@ -440,6 +497,12 @@ export const loadStats = async (mode = state.currentMode) => {
             document.getElementById('stat-country-name').innerText = flag + ' ' + cc;
             document.getElementById('stat-country-rate').innerText = data.regional.country_win_rate + '%';
             document.getElementById('stat-global-rate').innerText = data.regional.global_win_rate + '%';
+            const globalTotalEl = document.getElementById('stat-global-total');
+            if (globalTotalEl) {
+                const modeTotal = data.regional.global_total_games ?? 0;
+                const allTotal = data.regional.all_modes_total_games ?? modeTotal;
+                globalTotalEl.innerText = `${modeTotal} (Total geral: ${allTotal})`;
+            }
         }
         
         document.getElementById('stats-modal').classList.remove('hidden');

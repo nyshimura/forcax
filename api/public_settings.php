@@ -11,9 +11,10 @@ $settings = [
     'adsterra_code' => '',
     'adsterra_social_bar' => '',
     'adsense_code' => '',
-    'donate_link' => ''
+    'donate_link' => '',
+    'google_analytics_id' => ''
 ];
-$res = $conn->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ad_provider', 'adsterra_code', 'adsterra_social_bar', 'adsense_code', 'donate_link')");
+$res = $conn->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ad_provider', 'adsterra_code', 'adsterra_social_bar', 'adsense_code', 'donate_link', 'google_analytics_id')");
 if ($res) {
     while ($row = $res->fetch_assoc()) {
         $settings[$row['setting_key']] = $row['setting_value'];
