@@ -394,7 +394,7 @@ export const closeEndgame = () => {
 
 export const loadStats = async (mode = state.currentMode) => {
     try {
-        // Update active tabs
+        // Update active tabs immediately
         [1, 2, 4, 'multiplayer'].forEach(m => {
             const btn = document.getElementById('tab-stat-' + m);
             if (btn) {
@@ -408,14 +408,25 @@ export const loadStats = async (mode = state.currentMode) => {
 
         const dailyView = document.getElementById('stats-daily-view');
         const mpView = document.getElementById('stats-multiplayer-view');
-
-        const response = await fetch(`api/stats.php?mode=${encodeURIComponent(mode)}`, { headers: { 'X-UUID': state.uuid || '' } });
-        const data = await response.json();
-
         if (mode === 'multiplayer') {
             if (dailyView) dailyView.classList.add('hidden');
             if (mpView) mpView.classList.remove('hidden');
+        } else {
+            if (dailyView) dailyView.classList.remove('hidden');
+            if (mpView) mpView.classList.add('hidden');
+        }
 
+        // Open modal immediately so the button never feels frozen on mobile
+        const modal = document.getElementById('stats-modal');
+        if (modal) modal.classList.remove('hidden');
+
+        const data = await apiCall(`api/stats.php?mode=${encodeURIComponent(mode)}&_=${Date.now()}`);
+        if (!data || data.error) {
+            showToast((data && data.error) || 'Não foi possível carregar as estatísticas.', 'error');
+            return;
+        }
+
+        if (mode === 'multiplayer') {
             if (data.personal) {
                 document.getElementById('mp-stat-jogos').innerText = data.personal.total ?? 0;
                 document.getElementById('mp-stat-vitorias').innerText = (data.personal.win_rate ?? 0) + '%';
@@ -458,22 +469,17 @@ export const loadStats = async (mode = state.currentMode) => {
                     }).join('');
                 }
             }
-
-            document.getElementById('stats-modal').classList.remove('hidden');
             return;
         }
 
-        if (dailyView) dailyView.classList.remove('hidden');
-        if (mpView) mpView.classList.add('hidden');
-        
         if (data.personal) {
-            document.getElementById('stat-jogos').innerText = data.personal.total;
-            document.getElementById('stat-vitorias').innerText = data.personal.win_rate + '%';
-            document.getElementById('stat-sequencia').innerText = data.personal.current_streak;
-            document.getElementById('stat-melhor').innerText = data.personal.max_streak;
+            document.getElementById('stat-jogos').innerText = data.personal.total ?? 0;
+            document.getElementById('stat-vitorias').innerText = (data.personal.win_rate ?? 0) + '%';
+            document.getElementById('stat-sequencia').innerText = data.personal.current_streak ?? 0;
+            document.getElementById('stat-melhor').innerText = data.personal.max_streak ?? 0;
             
             // Render distribution chart
-            const dist = data.personal.distribution;
+            const dist = Array.isArray(data.personal.distribution) ? data.personal.distribution : [];
             const maxVal = Math.max(...dist, 1);
             let distHtml = '';
             dist.forEach((val, idx) => {
@@ -495,8 +501,8 @@ export const loadStats = async (mode = state.currentMode) => {
             const cc = data.regional.country_code || 'BR';
             const flag = String.fromCodePoint(...cc.toUpperCase().split('').map(c => 127397 + c.charCodeAt()));
             document.getElementById('stat-country-name').innerText = flag + ' ' + cc;
-            document.getElementById('stat-country-rate').innerText = data.regional.country_win_rate + '%';
-            document.getElementById('stat-global-rate').innerText = data.regional.global_win_rate + '%';
+            document.getElementById('stat-country-rate').innerText = (data.regional.country_win_rate ?? 0) + '%';
+            document.getElementById('stat-global-rate').innerText = (data.regional.global_win_rate ?? 0) + '%';
             const globalTotalEl = document.getElementById('stat-global-total');
             if (globalTotalEl) {
                 const modeTotal = data.regional.global_total_games ?? 0;
@@ -504,10 +510,9 @@ export const loadStats = async (mode = state.currentMode) => {
                 globalTotalEl.innerText = `${modeTotal} (Total geral: ${allTotal})`;
             }
         }
-        
-        document.getElementById('stats-modal').classList.remove('hidden');
     } catch (e) {
         console.error(e);
+        showToast('Erro ao carregar estatísticas.', 'error');
     }
 };
 
